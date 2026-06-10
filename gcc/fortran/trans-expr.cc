@@ -10466,6 +10466,39 @@ gfc_trans_subcomponent_assign (tree dest, gfc_component * cm,
 					false);
       gfc_add_expr_to_block (&block, tmp);
     }
+  else if (cm->ts.type == BT_CLASS && CLASS_DATA (cm)->attr.class_pointer
+	   && expr->ts.type != BT_CLASS)
+    {
+      /* Associate a CLASS pointer component with a non-class target.  */
+      gfc_init_se (&se, NULL);
+      if (CLASS_DATA (cm)->attr.dimension)
+	{
+	  se.direct_byref = 1;
+	  se.expr = gfc_class_data_get (dest);
+	  gfc_conv_expr_descriptor (&se, expr);
+	  gfc_add_block_to_block (&block, &se.pre);
+	}
+      else
+	{
+	  gfc_conv_expr_reference (&se, expr);
+	  gfc_add_block_to_block (&block, &se.pre);
+	  tmp = gfc_class_data_get (dest);
+	  gfc_add_modify (&block, tmp, fold_convert (TREE_TYPE (tmp), se.expr));
+	}
+      vtab = gfc_get_symbol_decl (gfc_find_vtab (&expr->ts));
+      vtab = gfc_build_addr_expr (NULL_TREE, vtab);
+      tmp = gfc_class_vptr_get (dest);
+      gfc_add_modify (&block, tmp, fold_convert (TREE_TYPE (tmp), vtab));
+      if (UNLIMITED_POLY (cm))
+	{
+	  tmp = gfc_class_len_get (dest);
+	  gfc_add_modify (&block, tmp,
+			  expr->ts.type == BT_CHARACTER
+			  ? fold_convert (TREE_TYPE (tmp), se.string_length)
+			  : build_zero_cst (TREE_TYPE (tmp)));
+	}
+      gfc_add_block_to_block (&block, &se.post);
+    }
   else if ((cm->attr.dimension || cm->attr.codimension)
 	   && !cm->attr.proc_pointer)
     {
