@@ -7068,7 +7068,9 @@ conv_null_actual (gfc_se * parmse, gfc_expr * e, gfc_symbol * fsym)
 	    }
 	}
     }
-  else if (fsym->ts.type == BT_DERIVED)
+  else if (fsym->ts.type == BT_DERIVED
+	   || ((fsym->attr.allocatable || fsym->attr.pointer)
+	       && fsym->ts.type != BT_CLASS))
     {
       if (e->ts.type != BT_UNKNOWN)
 	/* MOLD is present.  Pass a corresponding temporary NULL pointer.
@@ -7407,9 +7409,11 @@ gfc_conv_procedure_call (gfc_se * se, gfc_symbol * sym,
 	    }
 	}
       else if (e->expr_type == EXPR_NULL
-	       && (e->ts.type == BT_UNKNOWN || e->ts.type == BT_DERIVED)
 	       && fsym && attr && (attr->pointer || attr->allocatable)
-	       && fsym->ts.type == BT_DERIVED)
+	       && ((fsym->ts.type == BT_DERIVED
+		    && (e->ts.type == BT_UNKNOWN || e->ts.type == BT_DERIVED))
+		   || (fsym->attr.allocatable && fsym->ts.type != BT_CLASS
+		       && fsym->ts.type != BT_CHARACTER)))
 	{
 	  gfc_init_se (&parmse, NULL);
 	  gfc_conv_expr_reference (&parmse, e);
