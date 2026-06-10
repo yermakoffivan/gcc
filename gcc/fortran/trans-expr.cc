@@ -10597,6 +10597,14 @@ gfc_trans_subcomponent_assign (tree dest, gfc_component * cm,
 			      se.string_length));
 	    }
 	}
+      else if (cm->ts.type == BT_CHARACTER)
+	{
+	  /* Copy into the explicit-length allocatable character component.  */
+	  gfc_conv_string_parameter (&se);
+	  gfc_trans_string_copy (&block, cm->ts.u.cl->backend_decl, dest,
+				 cm->ts.kind, se.string_length, se.expr,
+				 expr->ts.kind);
+	}
       else
 	{
 	  gfc_add_modify (&block, tmp,
